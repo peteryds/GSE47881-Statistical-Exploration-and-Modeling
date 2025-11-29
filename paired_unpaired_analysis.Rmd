@@ -399,7 +399,7 @@ n_sig_unpaired <- sum(comparison$P_Value_Unpaired < 0.05)
 
 **Key Observations:**
 
-1.  **Standard Error Comparison**: The unpaired analysis shows SE values that are on average **`r round(avg_se_ratio, 2)`x** the paired analysis SE. This modest inflation shows some variance increase from ignoring pairs, though the effect is not dramatic in this dataset.
+1.  **Standard Error Comparison**: The unpaired analysis shows SE values that are on average **`r round(avg_se_ratio, 2)`x** the paired analysis SE. The SE ratio reflects how much precision is gained by accounting for the paired structure; it follows approximately $\text{SE ratio} \approx 1 / \sqrt{1 - r}$, where $r$ is the Pre-Post correlation within subjects. Our modest ratio implies relatively low Pre-Post correlation in this dataset, suggesting the between-subject variability is not dramatically larger than the within-subject variability. This is a point worth exploring further.
 
 2.  **Statistical Power**:
 
@@ -407,7 +407,7 @@ n_sig_unpaired <- sum(comparison$P_Value_Unpaired < 0.05)
     -   Unpaired analysis: **`r n_sig_unpaired`** genes significant at p < 0.05
     -   Both approaches detected the same number of significant genes, indicating the training effect is strong enough to overcome the variance inflation.
 
-3.  **Interpretation**: In this dataset, the training effect is sufficiently strong that both approaches yield similar conclusions. However, the paired design remains theoretically preferable because it explicitly models the within-subject correlation. In datasets with weaker effects or higher between-subject variability, the difference would be more pronounced.
+3.  **Interpretation**: In this dataset, the training effect is sufficiently strong that both approaches yield similar conclusions. The paired design remains theoretically preferable because it explicitly models the within-subject correlation.
 
 ## 3.2 Categorical Analysis: Key Findings
 
