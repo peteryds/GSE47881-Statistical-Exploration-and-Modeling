@@ -200,6 +200,44 @@ ggplot(se_long, aes(x = Gene, y = SE, fill = Analysis)) +
   scale_fill_manual(values = c("Paired" = "#2E86AB", "Unpaired" = "#A23B72"))
 ```
 
+### Empirical Pre-Post Correlation
+
+```{r pre-post-correlation}
+# Compute Pre-Post correlation for each target gene using long_df
+correlation_results <- lapply(target_genes, function(g) {
+  if (!g %in% colnames(long_df)) return(NULL)
+
+  # Split by timepoint
+  pre_df <- long_df[long_df$timepoint == "pre-training", c("subject_id", g)]
+  post_df <- long_df[long_df$timepoint == "post-training", c("subject_id", g)]
+
+  # Merge to align by subject
+  merged <- merge(pre_df, post_df, by = "subject_id", suffixes = c("_pre", "_post"))
+
+  pre_vals <- merged[[paste0(g, "_pre")]]
+  post_vals <- merged[[paste0(g, "_post")]]
+  r <- cor(pre_vals, post_vals, use = "complete.obs")
+
+  # Predicted SE ratio from formula: 1 / sqrt(1 - r)
+  predicted_ratio <- 1 / sqrt(1 - r)
+
+  data.frame(
+    Gene = g,
+    Pre_Post_Correlation = r,
+    Predicted_SE_Ratio = predicted_ratio
+  )
+})
+
+correlation_df <- do.call(rbind, correlation_results)
+
+# Merge with observed SE ratios
+correlation_df <- merge(correlation_df, comparison[, c("Gene", "SE_Ratio")], by = "Gene")
+colnames(correlation_df)[4] <- "Observed_SE_Ratio"
+
+knitr::kable(correlation_df, digits = 3,
+             caption = "Pre-Post Correlation and SE Ratio Comparison")
+```
+
 ------------------------------------------------------------------------
 
 # 2. Categorical Variable Analysis
@@ -399,15 +437,17 @@ n_sig_unpaired <- sum(comparison$P_Value_Unpaired < 0.05)
 
 **Key Observations:**
 
-1.  **Standard Error Comparison**: The unpaired analysis shows SE values that are on average **`r round(avg_se_ratio, 2)`x** the paired analysis SE. The SE ratio reflects how much precision is gained by accounting for the paired structure; it follows approximately $\text{SE ratio} \approx 1 / \sqrt{1 - r}$, where $r$ is the Pre-Post correlation within subjects. Our modest ratio implies relatively low Pre-Post correlation in this dataset, suggesting the between-subject variability is not dramatically larger than the within-subject variability. This is a point worth exploring further.
+1.  **Standard Error Comparison**: The unpaired analysis shows SE values that are on average **`r round(avg_se_ratio, 2)`x** the paired analysis SE. The SE ratio reflects how much precision is gained by accounting for the paired structure; it follows approximately $\text{SE ratio} \approx 1 / \sqrt{1 - r}$, where $r$ is the Pre-Post correlation within subjects. Our modest ratio implies relatively low Pre-Post correlation in this dataset, suggesting the between-subject variability is not dramatically larger than the within-subject variability.
 
-2.  **Statistical Power**:
+2.  **Negative Pre-Post Correlations**: Some genes show negative Pre-Post correlations (e.g., 204008_at: r ≈ -0.23), which is unexpected—baseline and follow-up measures are typically positively correlated. When r < 0, the predicted SE ratio falls below 1, meaning the unpaired analysis would actually have smaller SEs than paired. This pattern could reflect compensatory regulation (high baseline leading to stronger downregulation), ceiling/floor effects, or noise in low-expression genes.
+
+3.  **Statistical Power**:
 
     -   Paired analysis: **`r n_sig_paired`** genes significant at p < 0.05
     -   Unpaired analysis: **`r n_sig_unpaired`** genes significant at p < 0.05
     -   Both approaches detected the same number of significant genes, indicating the training effect is strong enough to overcome the variance inflation.
 
-3.  **Interpretation**: In this dataset, the training effect is sufficiently strong that both approaches yield similar conclusions. The paired design remains theoretically preferable because it explicitly models the within-subject correlation.
+4.  **Interpretation**: In this dataset, the training effect is sufficiently strong that both approaches yield similar conclusions. The paired design remains theoretically preferable because it explicitly models the within-subject correlation.
 
 ## 3.2 Categorical Analysis: Key Findings
 
