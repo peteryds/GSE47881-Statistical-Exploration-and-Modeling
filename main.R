@@ -11,6 +11,8 @@ source("R/load_packages.R")
 source("R/load_data.R")
 source("R/munging.R")
 source("R/diff_models.R")
+source("R/Box_plotraw.R")
+source("R/Descriptive_analysis.R")
 
 # Setup libraries
 setup_environment()
@@ -29,8 +31,23 @@ final_df <- process_gene_data(eset)
 # Preview data
 print(head(final_df[, 1:5]))
 
+
 # ============================================================
-# 3. Analysis: Targeted Gene List
+# 3. Raw Data Summary & QC
+# ============================================================
+
+raw_summary <- summarize_raw_data(eset)
+
+print(raw_summary$summary_stats)
+cat("Global Mean: ", raw_summary$global_mean, "\n")
+cat("Global SD: ", raw_summary$global_sd, "\n")
+
+# Global PRE/POST raw-level comparison. Raw PRE vs POST boxplot
+boxplot_path <- plot_raw_pre_post_boxplot(eset)
+
+
+# ============================================================
+# 4. Analysis: Targeted Gene List
 # ============================================================
 
 # Define the 8 Genes of Interest
@@ -54,7 +71,7 @@ print(results_age)
 
 
 # ============================================================
-# 4. Export Results
+# 5. Export Results
 # ============================================================
 
 # Define output directory
