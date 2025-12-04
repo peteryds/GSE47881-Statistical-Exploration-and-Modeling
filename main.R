@@ -11,7 +11,6 @@ source("R/load_packages.R")
 source("R/load_data.R")
 source("R/munging.R")
 source("R/diff_models.R")
-source("R/Box_plotraw.R")
 source("R/Descriptive_analysis.R")
 
 # Setup libraries
@@ -36,15 +35,17 @@ print(head(final_df[, 1:5]))
 # 3. Raw Data Summary & QC
 # ============================================================
 
-raw_summary <- summarize_raw_data(eset)
+message("\n===== RAW DATA SUMMARY & QC =====")
+raw_summary <- summarize_raw_data(eset, output_dir = "output/raw_qc")
 
+# Print summary statistics
 print(raw_summary$summary_stats)
 cat("Global Mean: ", raw_summary$global_mean, "\n")
 cat("Global SD: ", raw_summary$global_sd, "\n")
-
-# Global PRE/POST raw-level comparison. Raw PRE vs POST boxplot
-boxplot_path <- plot_raw_pre_post_boxplot(eset)
-
+cat("Pre Mean: ", raw_summary$pre_mean, "\n")
+cat("Pre SD: ", raw_summary$pre_sd, "\n")
+cat("Post Mean: ", raw_summary$post_mean, "\n")
+cat("Post SD: ", raw_summary$post_sd, "\n")
 
 # ============================================================
 # 4. Analysis: Targeted Gene List
