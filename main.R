@@ -9,6 +9,7 @@ source("R/load_data.R")
 source("R/munging.R")
 source("R/diff_models.R")
 source("R/eda.R") 
+source("R/Descriptive_analysis.R")
 
 # Setup libraries
 setup_environment()
@@ -41,8 +42,26 @@ density_plot <- plot_density(eset)
 ggsave(file.path(eda_dir, "QC_Density_Plot.png"), plot = density_plot, width = 8, height = 6)
 
 
+
+# ============================================================
+# 3. Raw Data Summary & QC
+# ============================================================
+
+message("\n===== RAW DATA SUMMARY & QC =====")
+raw_summary <- summarize_raw_data(eset, output_dir = "output/raw_qc")
+
+# Print summary statistics
+print(raw_summary$summary_stats)
+cat("Global Mean: ", raw_summary$global_mean, "\n")
+cat("Global SD: ", raw_summary$global_sd, "\n")
+cat("Pre Mean: ", raw_summary$pre_mean, "\n")
+cat("Pre SD: ", raw_summary$pre_sd, "\n")
+cat("Post Mean: ", raw_summary$post_mean, "\n")
+cat("Post SD: ", raw_summary$post_sd, "\n")
+
 # ============================================================
 # 3. Genome-Wide Screening (LIMMA) & Results EDA (Part 2 EDA)
+# 4. Analysis: Targeted Gene List
 # ============================================================
 
 # Run limma (Paired Analysis)
@@ -76,6 +95,7 @@ if (length(sig_genes_all) > 0) {
 
 # ============================================================
 # 4. Data Munging (Prepare for Age Analysis)
+# 5. Export Results
 # ============================================================
 
 final_df <- process_gene_data(eset)
@@ -133,3 +153,4 @@ write.csv(results_intercept, file.path(output_dir, "results_intercept_model.csv"
 write.csv(results_age, file.path(output_dir, "results_age_model.csv"), row.names = FALSE)
 
 message(paste("[DONE] Analysis & EDA complete! Check", output_dir))
+message(paste("Results saved to", output_dir))
