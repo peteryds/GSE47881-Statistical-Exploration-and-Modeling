@@ -25,7 +25,7 @@ summarize_raw_data <- function(eset, output_dir = "output/raw_qc") {
     pData(eset)$`time:ch1` == "pre-training", "Pre", "Post"
   )
   
-subject_ids <- pData(eset)$`patientid:ch1`
+  subject_ids <- pData(eset)$`patientid:ch1`
   
   df_all <- data.frame(
     expr     = as.numeric(mat),

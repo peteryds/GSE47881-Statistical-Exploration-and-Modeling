@@ -6,9 +6,9 @@
 # 1. Load Environment & Functions
 source("R/load_packages.R")
 source("R/load_data.R")
-source("R/munging.R")
-source("R/diff_models.R")
-source("R/eda.R") 
+source("R/munging.R")  # Must contain: process_gene_data, clean_and_normalize_data
+source("R/models.R")   # Must contain: run_limma_screening, run_limma_interaction
+source("R/eda.R")      # Must contain: plotting functions
 source("R/Descriptive_analysis.R")
 
 # Setup libraries
@@ -147,6 +147,25 @@ for (gene in genes_to_plot) {
     ggsave(file.path(gene_plot_dir, paste0(gene, "_PrePost_Violin.png")), p_violin, width = 5, height = 4)
   }
 }
+
+message("\n[DONE] Pipeline Finished Successfully!")
+message(paste("Check output directory:", output_dir))
+
+# ============================================================
+# 3. Raw Data Summary & QC
+# ============================================================
+
+message("\n===== RAW DATA SUMMARY & QC =====")
+raw_summary <- summarize_raw_data(eset, output_dir = "output/raw_qc")
+
+# Print summary statistics
+print(raw_summary$summary_stats)
+cat("Global Mean: ", raw_summary$global_mean, "\n")
+cat("Global SD: ", raw_summary$global_sd, "\n")
+cat("Pre Mean: ", raw_summary$pre_mean, "\n")
+cat("Pre SD: ", raw_summary$pre_sd, "\n")
+cat("Post Mean: ", raw_summary$post_mean, "\n")
+cat("Post SD: ", raw_summary$post_sd, "\n")
 
 # Export Results
 write.csv(results_intercept, file.path(output_dir, "results_intercept_model.csv"), row.names = FALSE)
