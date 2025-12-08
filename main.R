@@ -9,6 +9,7 @@ source("R/load_data.R")
 source("R/munging.R")  # Must contain: process_gene_data, clean_and_normalize_data
 source("R/models.R")   # Must contain: run_limma_screening, run_limma_interaction
 source("R/eda.R")      # Must contain: plotting functions
+source("R/Descriptive_analysis.R")
 
 # Setup libraries
 setup_environment()
@@ -155,3 +156,19 @@ for (gene in top_genes) {
 
 message("\n[DONE] Pipeline Finished Successfully!")
 message(paste("Check output directory:", output_dir))
+
+# ============================================================
+# 3. Raw Data Summary & QC
+# ============================================================
+
+message("\n===== RAW DATA SUMMARY & QC =====")
+raw_summary <- summarize_raw_data(eset, output_dir = "output/raw_qc")
+
+# Print summary statistics
+print(raw_summary$summary_stats)
+cat("Global Mean: ", raw_summary$global_mean, "\n")
+cat("Global SD: ", raw_summary$global_sd, "\n")
+cat("Pre Mean: ", raw_summary$pre_mean, "\n")
+cat("Pre SD: ", raw_summary$pre_sd, "\n")
+cat("Post Mean: ", raw_summary$post_mean, "\n")
+cat("Post SD: ", raw_summary$post_sd, "\n")
