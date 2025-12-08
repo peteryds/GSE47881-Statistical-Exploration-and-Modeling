@@ -11,6 +11,7 @@ source("R/load_packages.R")
 source("R/load_data.R")
 source("R/munging.R")
 source("R/diff_models.R")
+source("R/Descriptive_analysis.R")
 
 # Setup libraries
 setup_environment()
@@ -29,8 +30,25 @@ final_df <- process_gene_data(eset)
 # Preview data
 print(head(final_df[, 1:5]))
 
+
 # ============================================================
-# 3. Analysis: Targeted Gene List
+# 3. Raw Data Summary & QC
+# ============================================================
+
+message("\n===== RAW DATA SUMMARY & QC =====")
+raw_summary <- summarize_raw_data(eset, output_dir = "output/raw_qc")
+
+# Print summary statistics
+print(raw_summary$summary_stats)
+cat("Global Mean: ", raw_summary$global_mean, "\n")
+cat("Global SD: ", raw_summary$global_sd, "\n")
+cat("Pre Mean: ", raw_summary$pre_mean, "\n")
+cat("Pre SD: ", raw_summary$pre_sd, "\n")
+cat("Post Mean: ", raw_summary$post_mean, "\n")
+cat("Post SD: ", raw_summary$post_sd, "\n")
+
+# ============================================================
+# 4. Analysis: Targeted Gene List
 # ============================================================
 
 # Define the 8 Genes of Interest
@@ -54,7 +72,7 @@ print(results_age)
 
 
 # ============================================================
-# 4. Export Results
+# 5. Export Results
 # ============================================================
 
 # Define output directory
