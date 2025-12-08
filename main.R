@@ -1,156 +1,157 @@
 # ============================================================
 # Gene Expression Analysis: Resistance Training & Age
-# Main Execution Script
+# Main Execution Script (Final Updated Version)
 # ============================================================
 
 # 1. Load Environment & Functions
 source("R/load_packages.R")
 source("R/load_data.R")
-source("R/munging.R")
-source("R/diff_models.R")
-source("R/eda.R") 
-source("R/Descriptive_analysis.R")
+source("R/munging.R")  # Must contain: process_gene_data, clean_and_normalize_data
+source("R/models.R")   # Must contain: run_limma_screening, run_limma_interaction
+source("R/eda.R")      # Must contain: plotting functions
 
 # Setup libraries
 setup_environment()
 
+# 2. Setup Directories
 output_dir <- "output"
 if (!dir.exists(output_dir)) dir.create(output_dir)
-eda_dir <- file.path(output_dir, "EDA_Global")
-if (!dir.exists(eda_dir)) dir.create(eda_dir)
+
+dir_raw <- file.path(output_dir, "QC_1_Raw")
+if (!dir.exists(dir_raw)) dir.create(dir_raw)
+
+dir_clean <- file.path(output_dir, "QC_2_Cleaned")
+if (!dir.exists(dir_clean)) dir.create(dir_clean)
+
+dir_plots <- file.path(output_dir, "Plots_Interaction")
+if (!dir.exists(dir_plots)) dir.create(dir_plots)
 
 # ============================================================
-# 2. Data Loading & Global QC (Part 1 EDA)
+# 3. Data Loading & Phase 1 QC (Raw Data)
 # ============================================================
+message("\n=== STEP 1: Loading Raw Data ===")
+eset_raw <- get_geo_data(gse_id = "GSE47881")
 
-eset <- get_geo_data(gse_id = "GSE47881")
+message("Generating Phase 1 QC Plots (Raw Data)...")
 
-message("Generating Global QC Plots...")
+# 3.1 PCA (Raw)
+# This will likely show the outlier and lack of clustering
+p_pca_raw <- plot_pca(eset_raw, title = "PCA: Raw Data (Before QC)")
+ggsave(file.path(dir_raw, "QC_Raw_PCA.png"), plot = p_pca_raw, width = 8, height = 6)
 
-# 2.1 PCA Plot
-pca_plot <- plot_pca(eset, title = "PCA: All Samples")
-ggsave(file.path(eda_dir, "QC_Global_PCA.png"), plot = pca_plot, width = 8, height = 6)
+# 3.2 Heatmap (Raw)
+# Use png() device for pheatmap
+png(file.path(dir_raw, "QC_Raw_Heatmap.png"), width = 800, height = 800)
+plot_sample_heatmap(eset_raw)
+dev.off()
 
-# 2.2 Sample Distance Heatmap
-# Note: pheatmap draws directly to file using png() device
-png(file.path(eda_dir, "QC_Sample_Distance_Heatmap.png"), width = 800, height = 800)
-plot_sample_heatmap(eset)
-dev.off() # Close device
+# 3.3 Density (Raw)
+# This will likely show the linear scale (not Log2) and the "spike" at 0
+p_dens_raw <- plot_density(eset_raw) + 
+  labs(subtitle = "Raw Data: Note Linear Scale & Outlier Spike")
+ggsave(file.path(dir_raw, "QC_Raw_Density.png"), plot = p_dens_raw, width = 8, height = 6)
 
-# 2.3 Density Plot
-density_plot <- plot_density(eset)
-ggsave(file.path(eda_dir, "QC_Density_Plot.png"), plot = density_plot, width = 8, height = 6)
-
-
-
-# ============================================================
-# 3. Raw Data Summary & QC
-# ============================================================
-
-message("\n===== RAW DATA SUMMARY & QC =====")
-raw_summary <- summarize_raw_data(eset, output_dir = "output/raw_qc")
-
-# Print summary statistics
-print(raw_summary$summary_stats)
-cat("Global Mean: ", raw_summary$global_mean, "\n")
-cat("Global SD: ", raw_summary$global_sd, "\n")
-cat("Pre Mean: ", raw_summary$pre_mean, "\n")
-cat("Pre SD: ", raw_summary$pre_sd, "\n")
-cat("Post Mean: ", raw_summary$post_mean, "\n")
-cat("Post SD: ", raw_summary$post_sd, "\n")
 
 # ============================================================
-# 3. Genome-Wide Screening (LIMMA) & Results EDA (Part 2 EDA)
-# 4. Analysis: Targeted Gene List
+# 4. Data Munging (Cleaning & Normalization)
 # ============================================================
+message("\n=== STEP 2: Data Cleaning & Normalization ===")
 
-# Run limma (Paired Analysis)
-limma_res <- run_limma_screening(eset, p_cutoff = 0.05)
+# This function performs:
+# 1. Log2 transformation (if data is raw)
+# 2. Removal of specific outliers (optional)
+# 3. Removal of unpaired 'orphan' subjects (Crucial for Paired Analysis)
+# NOTE: If you identified specific GSM IDs to remove from the Raw Heatmap, add them here.
+# e.g., outliers = c("GSM1161833")
+
+eset_clean <- clean_and_normalize_data(eset_raw, outliers_to_remove = NULL)
+
+
+# ============================================================
+# 5. Phase 2 QC (Cleaned Data)
+# ============================================================
+message("Generating Phase 2 QC Plots (Cleaned Data)...")
+
+# 5.1 PCA (Clean)
+# Outlier should be gone, scale should be normalized
+p_pca_clean <- plot_pca(eset_clean, title = "PCA: Cleaned & Log2 Transformed")
+ggsave(file.path(dir_clean, "QC_Clean_PCA.png"), plot = p_pca_clean, width = 8, height = 6)
+
+# 5.2 Heatmap (Clean)
+png(file.path(dir_clean, "QC_Clean_Heatmap.png"), width = 800, height = 800)
+plot_sample_heatmap(eset_clean)
+dev.off()
+
+# 5.3 Density (Clean)
+# Curves should overlap (Bell shape)
+p_dens_clean <- plot_density(eset_clean) + 
+  labs(subtitle = "Cleaned Data: Log2 Scale & Normalized")
+ggsave(file.path(dir_clean, "QC_Clean_Density.png"), plot = p_dens_clean, width = 8, height = 6)
+
+
+# ============================================================
+# 6. Statistical Analysis (Limma)
+# ============================================================
+message("\n=== STEP 3: Running Limma Models ===")
+
+# A. Standard Paired Analysis (Main Effect: Post vs Pre)
+# Tests: Does exercise change gene expression (on average)?
+limma_res <- run_limma_screening(eset_clean, p_cutoff = 0.05)
+
+# B. Interaction Analysis (Age Effect)
+# Tests: Does Age affect the MAGNITUDE of change? (Timepoint * Age)
+limma_int <- run_limma_interaction(eset_clean, p_cutoff = 0.05)
 
 # Save Results
-write.csv(limma_res$full_results, file.path(output_dir, "limma_all_genes.csv"))
-write.csv(limma_res$sig_genes_df, file.path(output_dir, "limma_significant_genes.csv"))
+write.csv(limma_res$full_results, file.path(output_dir, "Results_Main_Effect.csv"))
+write.csv(limma_res$sig_genes_df, file.path(output_dir, "Results_Main_Effect_Sig.csv"))
+write.csv(limma_int$full_results, file.path(output_dir, "Results_Interaction_Age.csv"))
+write.csv(limma_int$sig_genes_df, file.path(output_dir, "Results_Interaction_Age_Sig.csv"))
 
-message("Generating Significant Results EDA...")
 
-# 3.1 Volcano Plot
+# ============================================================
+# 7. Visualization of Results
+# ============================================================
+message("\n=== STEP 4: Visualizing Significant Findings ===")
+
+# 7.1 Volcano Plot (Main Effect)
 volcano_plot <- plot_volcano(limma_res$full_results, p_cutoff = 0.05)
-ggsave(file.path(output_dir, "EDA_Volcano_Plot.png"), plot = volcano_plot, width = 8, height = 6)
+ggsave(file.path(output_dir, "Volcano_Main_Effect.png"), plot = volcano_plot, width = 8, height = 6)
 
-# 3.2 Heatmap of Top Significant Genes
-# Get top 50 significant genes (or fewer if not enough) for heatmap
-top_n_heatmap <- 50
-sig_genes_all <- rownames(limma_res$sig_genes_df)
+# 7.2 Detailed Plots for Top Interaction Genes
+# We need the wide-format dataframe (diff) for plotting the scatter plots
+# We generate this strictly for visualization purposes
+final_df_viz <- process_gene_data(eset_clean) 
 
-if (length(sig_genes_all) > 0) {
-  genes_for_heatmap <- head(sig_genes_all, top_n_heatmap)
-  
-  png(file.path(output_dir, "EDA_Sig_Genes_Heatmap.png"), width = 800, height = 1000)
-  plot_sig_heatmap(eset, genes_for_heatmap)
-  dev.off()
+# Select top genes: 
+# Priority 1: Significant Interaction Genes (FDR < 0.05)
+# Priority 2: Top 10 genes by P-value (if no sig genes)
+top_genes <- rownames(limma_int$sig_genes_df)
+if (length(top_genes) == 0) {
+  message("No significant interaction genes found (FDR < 0.05). Plotting top 10 by P-value.")
+  top_genes <- rownames(head(limma_int$full_results, 10))
 } else {
-  warning("[WARNING] No significant genes for heatmap.")
+  # Limit to top 20 to avoid too many files
+  top_genes <- head(top_genes, 20)
 }
 
+message(paste("Generating plots for", length(top_genes), "interaction candidates..."))
 
-# ============================================================
-# 4. Data Munging (Prepare for Age Analysis)
-# 5. Export Results
-# ============================================================
-
-final_df <- process_gene_data(eset)
-
-
-# ============================================================
-# 5. Detailed Analysis: Targeted Genes
-# ============================================================
-
-# Dynamic Selection (Tier 1: FDR < 0.05, Tier 2: P < 0.001)
-target_genes <- NULL
-if (length(sig_genes_all) > 0) {
-  target_genes <- sig_genes_all
-} else {
-  loose_p <- 0.001
-  target_genes <- rownames(limma_res$full_results %>% filter(P.Value < loose_p))
-  if (length(target_genes) == 0) target_genes <- rownames(head(limma_res$full_results, 5))
-}
-
-cat("\nAnalyzing", length(target_genes), "Target Genes.\n")
-
-# Run Models
-results_intercept <- run_intercept_models(final_df, target_genes)
-results_age <- run_age_models(final_df, target_genes)
-
-# ============================================================
-# 6. Specific Gene Visualization (Scatter & Violin)
-# ============================================================
-
-gene_plot_dir <- file.path(output_dir, "gene_plots")
-if (!dir.exists(gene_plot_dir)) dir.create(gene_plot_dir)
-
-# Cap at top 20 for plotting
-genes_to_plot <- head(target_genes, 5)
-message("Generating detailed plots for top ", length(genes_to_plot), " genes...")
-
-for (gene in genes_to_plot) {
-  
-  # A. Age vs Change Scatter Plot
-  p_scatter <- plot_gene_age_scatter(final_df, gene)
+for (gene in top_genes) {
+  # A. Scatter Plot (Age vs Change) - Proves the Interaction
+  p_scatter <- plot_gene_age_scatter(final_df_viz, gene)
   if (!is.null(p_scatter)) {
-    ggsave(file.path(gene_plot_dir, paste0(gene, "_Age_Scatter.png")), p_scatter, width = 5, height = 4)
+    # Add subtitle to indicate this was found via Limma
+    p_scatter <- p_scatter + labs(subtitle = "Selected via Limma Interaction (Age * Time)")
+    ggsave(file.path(dir_plots, paste0("Scatter_", gene, ".png")), p_scatter, width = 5, height = 4)
   }
   
-  # B. Pre vs Post Violin Plot
-  # Note: This uses 'eset' directly, not 'final_df'
-  p_violin <- plot_gene_violin(eset, gene)
+  # B. Violin Plot (Pre vs Post) - Shows the raw change
+  p_violin <- plot_gene_violin(eset_clean, gene)
   if (!is.null(p_violin)) {
-    ggsave(file.path(gene_plot_dir, paste0(gene, "_PrePost_Violin.png")), p_violin, width = 5, height = 4)
+    ggsave(file.path(dir_plots, paste0("Violin_", gene, ".png")), p_violin, width = 5, height = 4)
   }
 }
 
-# Export Results
-write.csv(results_intercept, file.path(output_dir, "results_intercept_model.csv"), row.names = FALSE)
-write.csv(results_age, file.path(output_dir, "results_age_model.csv"), row.names = FALSE)
-
-message(paste("[DONE] Analysis & EDA complete! Check", output_dir))
-message(paste("Results saved to", output_dir))
+message("\n[DONE] Pipeline Finished Successfully!")
+message(paste("Check output directory:", output_dir))

@@ -83,7 +83,8 @@ plot_density <- function(eset) {
   expr_df$Timepoint <- pdata$`time:ch1`[match(expr_df$Sample, rownames(pdata))]
   
   ggplot(expr_df, aes(x = Expression, group = Sample, color = Timepoint)) +
-    geom_density(alpha = 0.3, size = 0.5) +
+    # FIX: Changed 'size' to 'linewidth' to fix ggplot2 3.4.0 warning
+    geom_density(alpha = 0.3, linewidth = 0.5) +
     labs(title = "Density Plot of Expression Values",
          subtitle = "Check for normalization (curves should align)",
          x = "Log2 Expression",
@@ -115,6 +116,7 @@ plot_volcano <- function(limma_results, p_cutoff = 0.05, lfc_cutoff = 0) {
     )
   
   ggplot(df, aes(x = logFC, y = -log10(adj.P.Val), color = Significance)) +
+    # Note: For geom_point, 'size' is still correct.
     geom_point(alpha = 0.6, size = 1) +
     scale_color_manual(values = c("Up" = "red", "Down" = "blue", "Not Sig" = "grey")) +
     geom_hline(yintercept = -log10(p_cutoff), linetype = "dashed") +
