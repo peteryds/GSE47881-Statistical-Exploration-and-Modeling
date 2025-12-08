@@ -88,3 +88,59 @@ run_age_models <- function(df, genes) {
   
   do.call(rbind, results_list)
 }
+
+#' Run Limma Screening for Paired Data
+#'
+#' Uses limma to perform a genome-wide paired analysis (Post vs Pre).
+#' This is much more efficient and statistically robust than looping lm().
+#'
+#' @param eset The ExpressionSet object containing raw expression and phenotype data.
+#' @param p_cutoff Adjusted P-value cutoff (FDR) for significance.
+#' @param lfc_cutoff Log Fold Change cutoff (absolute value).
+#'
+#' @return A list containing:
+#'   - top_table: A dataframe of all genes sorted by significance.
+#'   - sig_genes: A vector of probe IDs that passed the threshold.
+run_limma_screening <- function(eset, p_cutoff = 0.05, lfc_cutoff = 0) {
+  
+  message("Running limma genome-wide screening...")
+  
+  # 1. Prepare Data
+  # Extract Phenotype Data
+  pdata <- pData(eset)
+  subjects <- factor(pdata$`patientid:ch1`)
+  timepoints <- factor(pdata$`time:ch1`, levels = c("pre-training", "post-training"))
+  
+  # 2. Design Matrix (Paired Design)
+  # ~ subjects + timepoints
+  # This accounts for baseline differences between subjects (pairing)
+  # and tests the effect of time (Post vs Pre).
+  design <- model.matrix(~ subjects + timepoints)
+  
+  # 3. Fit Linear Model
+  fit <- lmFit(exprs(eset), design)
+  
+  # 4. Empirical Bayes Smoothing
+  fit <- eBayes(fit)
+  
+  # 5. Extract Results (Top Table)
+  # The coefficient for timepoints usually is the last column if we used the formula above.
+  # Let's verify the column name for "post-training".
+  coef_name <- grep("timepoints", colnames(design), value = TRUE)
+  
+  all_results <- topTable(fit, coef = coef_name, number = Inf, adjust.method = "BH")
+  
+  # 6. Filter Significant Genes
+  sig_results <- all_results %>%
+    filter(adj.P.Val < p_cutoff & abs(logFC) > lfc_cutoff)
+  
+  message(paste("Limma Complete."))
+  message(paste("Total Genes Tested:", nrow(all_results)))
+  message(paste("Significant Genes (FDR <", p_cutoff, "):", nrow(sig_results)))
+  
+  return(list(
+    full_results = all_results,
+    sig_genes_df = sig_results,
+    sig_probes = rownames(sig_results)
+  ))
+}

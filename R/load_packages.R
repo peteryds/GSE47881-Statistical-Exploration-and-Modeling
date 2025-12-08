@@ -38,7 +38,13 @@ setup_environment <- function() {
     library(tidyr)
     library(ggplot2)
     library(stringr)
+    library(pheatmap)
+    library(clusterProfiler)
+    library(org.Hs.eg.db)
+    library(hgu133plus2.db)
+    library(Biobase)
   })
   
+
   message("Environment setup complete. Packages loaded.")
 }
