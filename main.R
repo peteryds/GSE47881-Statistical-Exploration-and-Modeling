@@ -151,25 +151,48 @@ for (gene in genes_to_plot) {
 message("\n[DONE] Pipeline Finished Successfully!")
 message(paste("Check output directory:", output_dir))
 
-# ============================================================
-# 3. Raw Data Summary & QC
-# ============================================================
-
-message("\n===== RAW DATA SUMMARY & QC =====")
-raw_summary <- summarize_raw_data(eset, output_dir = "output/raw_qc")
-
-# Print summary statistics
-print(raw_summary$summary_stats)
-cat("Global Mean: ", raw_summary$global_mean, "\n")
-cat("Global SD: ", raw_summary$global_sd, "\n")
-cat("Pre Mean: ", raw_summary$pre_mean, "\n")
-cat("Pre SD: ", raw_summary$pre_sd, "\n")
-cat("Post Mean: ", raw_summary$post_mean, "\n")
-cat("Post SD: ", raw_summary$post_sd, "\n")
-
+# Raw data summary & QC are performed earlier in the script.
 # Export Results
 write.csv(results_intercept, file.path(output_dir, "results_intercept_model.csv"), row.names = FALSE)
 write.csv(results_age, file.path(output_dir, "results_age_model.csv"), row.names = FALSE)
 
 message(paste("[DONE] Analysis & EDA complete! Check", output_dir))
 message(paste("Results saved to", output_dir))
+
+
+
+# ---------------------------------------------
+# Run regressions on all *_diff columns in final_df
+# ---------------------------------------------
+
+diff_cols <- grep("_diff$", colnames(final_df), value = TRUE)
+G <- length(diff_cols)
+
+pvals <- numeric(G)
+
+for (i in seq_along(diff_cols)) {
+  gene <- diff_cols[i]
+  
+  fit <- summary(lm(final_df[[gene]] ~ 1))
+  
+  # extract p-value for the intercept
+  pvals[i] <- fit$coefficients[1, 4]
+}
+
+num_sig <- sum(pvals < 0.05)
+prop_sig <- mean(pvals < 0.05)
+
+cat("Total genes tested:", G, "\n")
+cat("Number of p < 0.05:", num_sig, "\n")
+cat("Proportion of significant p-values:", prop_sig, "\n")
+
+  diff_col_name <- diff_cols[i]
+  
+  fit <- summary(lm(final_df[[diff_col_name]] ~ 1))
+
+num_sig_age <- num_sig
+prop_sig_age <- prop_sig
+
+cat("Total genes tested (age model):", G, "\n")
+cat("Number of age p < 0.05:", num_sig_age, "\n")
+cat("Proportion (age model):", prop_sig_age, "\n")
