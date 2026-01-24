@@ -57,9 +57,7 @@ first step of `main.R`.
 
 ### Data Source
 
-The gene expression dataset GSE47881 is sourced from the Gene Expression Omnibus (GEO) database.
-
-https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE47881
+The gene expression dataset GSE47881 is sourced from the Gene Expression Omnibus (GEO) database.\
 
 ### Data Loading Design
 
