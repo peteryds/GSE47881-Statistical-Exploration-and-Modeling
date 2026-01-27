@@ -26,6 +26,10 @@ if (!dir.exists(dir_clean)) dir.create(dir_clean)
 dir_plots <- file.path(output_dir, "Plots_Interaction")
 if (!dir.exists(dir_plots)) dir.create(dir_plots)
 
+if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
+
+BiocManager::install(c("hgu133plus2.db", "AnnotationDbi", "enrichR"))
+
 # ============================================================
 # 3. Data Loading & Phase 1 QC (Raw Data)
 # ============================================================
@@ -102,7 +106,62 @@ limma_res <- run_limma_screening(eset_clean, p_cutoff = 0.05)
 # Tests: Does Age affect the MAGNITUDE of change? (Timepoint * Age)
 limma_int <- run_limma_interaction(eset_clean, p_cutoff = 0.05)
 
-# Save Results
+
+# ============================================================
+# 6.5 Annotation (ID Mapping) - NEW SECTION
+# ============================================================
+message("\n=== STEP 3.5: Mapping Probe IDs to Gene Symbols ===")
+library(hgu133plus2.db)
+library(AnnotationDbi)
+
+# Define a helper function to perform ID mapping
+# Define a helper function to perform ID mapping
+annotate_results <- function(df) {
+  # Safety Check: If dataframe is empty, return it immediately
+  if (nrow(df) == 0) {
+    message("  [Alert] Dataframe is empty. Skipping annotation.")
+    return(df)
+  }
+  
+  # Get Probe IDs (Row names)
+  probes <- rownames(df)
+  
+  # Use mapIds to convert Probes to Gene Symbols
+  symbols <- mapIds(hgu133plus2.db,
+                    keys = probes,
+                    column = "SYMBOL",
+                    keytype = "PROBEID",
+                    multiVals = "first")
+  
+  # Add Gene Symbol back to the dataframe
+  df$Gene_Symbol <- symbols
+  
+  # Optionally add full Gene Name
+  genenames <- mapIds(hgu133plus2.db,
+                      keys = probes,
+                      column = "GENENAME",
+                      keytype = "PROBEID",
+                      multiVals = "first")
+  df$Gene_Name <- genenames
+  
+  # Reorder columns
+  df <- df[, c("Gene_Symbol", setdiff(names(df), "Gene_Symbol"))]
+  
+  return(df)
+}
+
+# Execute Annotation
+message("Annotating Main Effect Results...")
+limma_res$full_results <- annotate_results(limma_res$full_results)
+limma_res$sig_genes_df <- annotate_results(limma_res$sig_genes_df)
+
+message("Annotating Interaction Results...")
+limma_int$full_results <- annotate_results(limma_int$full_results)
+limma_int$sig_genes_df <- annotate_results(limma_int$sig_genes_df)
+
+
+# Save Annotated Results
+# The output CSVs will now contain human-readable Gene Symbols
 write.csv(limma_res$full_results, file.path(output_dir, "Results_Main_Effect.csv"))
 write.csv(limma_res$sig_genes_df, file.path(output_dir, "Results_Main_Effect_Sig.csv"))
 write.csv(limma_int$full_results, file.path(output_dir, "Results_Interaction_Age.csv"))
@@ -119,39 +178,117 @@ volcano_plot <- plot_volcano(limma_res$full_results, p_cutoff = 0.05)
 ggsave(file.path(output_dir, "Volcano_Main_Effect.png"), plot = volcano_plot, width = 8, height = 6)
 
 # 7.2 Detailed Plots for Top Interaction Genes
-# We need the wide-format dataframe (diff) for plotting the scatter plots
-# We generate this strictly for visualization purposes
+# Use the processed data for visualization
 final_df_viz <- process_gene_data(eset_clean) 
 
-# Select top genes: 
-# Priority 1: Significant Interaction Genes (FDR < 0.05)
-# Priority 2: Top 10 genes by P-value (if no sig genes)
-top_genes <- rownames(limma_int$sig_genes_df)
-if (length(top_genes) == 0) {
+# Select top genes: Prioritize significant interaction genes
+top_genes_probes <- rownames(limma_int$sig_genes_df)
+
+if (length(top_genes_probes) == 0) {
   message("No significant interaction genes found (FDR < 0.05). Plotting top 10 by P-value.")
-  top_genes <- rownames(head(limma_int$full_results, 10))
+  top_genes_probes <- rownames(head(limma_int$full_results, 10))
 } else {
-  # Limit to top 20 to avoid too many files
-  top_genes <- head(top_genes, 20)
+  # Limit to top 20 to avoid generating too many files
+  top_genes_probes <- head(top_genes_probes, 20)
 }
 
-message(paste("Generating plots for", length(top_genes), "interaction candidates..."))
+message(paste("Generating plots for", length(top_genes_probes), "interaction candidates..."))
 
-for (gene in top_genes) {
-  # A. Scatter Plot (Age vs Change) - Proves the Interaction
-  p_scatter <- plot_gene_age_scatter(final_df_viz, gene)
+for (probe in top_genes_probes) {
+  # Retrieve Gene Symbol for plot titles
+  gene_symbol <- limma_int$full_results[probe, "Gene_Symbol"]
+  if (is.na(gene_symbol)) gene_symbol <- probe # Fallback to Probe ID if NA
+  
+  # A. Scatter Plot (Age vs Change)
+  p_scatter <- plot_gene_age_scatter(final_df_viz, probe)
   if (!is.null(p_scatter)) {
-    # Add subtitle to indicate this was found via Limma
-    p_scatter <- p_scatter + labs(subtitle = "Selected via Limma Interaction (Age * Time)")
-    ggsave(file.path(dir_plots, paste0("Scatter_", gene, ".png")), p_scatter, width = 5, height = 4)
+    p_scatter <- p_scatter + 
+      labs(title = paste("Interaction:", gene_symbol),
+           subtitle = paste("Probe:", probe, "| Selected via Limma (Age * Time)"))
+    ggsave(file.path(dir_plots, paste0("Scatter_", gene_symbol, "_", probe, ".png")), p_scatter, width = 5, height = 4)
   }
   
-  # B. Violin Plot (Pre vs Post) - Shows the raw change
-  p_violin <- plot_gene_violin(eset_clean, gene)
+  # B. Violin Plot (Pre vs Post)
+  p_violin <- plot_gene_violin(eset_clean, probe)
   if (!is.null(p_violin)) {
-    ggsave(file.path(dir_plots, paste0("Violin_", gene, ".png")), p_violin, width = 5, height = 4)
+    p_violin <- p_violin + labs(title = paste("Change:", gene_symbol))
+    ggsave(file.path(dir_plots, paste0("Violin_", gene_symbol, "_", probe, ".png")), p_violin, width = 5, height = 4)
   }
 }
 
-message("\n[DONE] Pipeline Finished Successfully!")
+
+# ============================================================
+# 8. Pathway Analysis (Split by Direction: UP vs DOWN)
+# ============================================================
+message("\n=== STEP 5: Pathway Enrichment Analysis (Directional) ===")
+library(enrichR)
+
+# 1. Setup Databases and Thresholds
+dbs <- c("KEGG_2021_Human", "GO_Biological_Process_2021")
+p_threshold <- 0.05  # Standard cutoff for saving files (you can filter to 0.01 later)
+
+# 2. Prepare Gene Lists (Split by logFC)
+# We assume 'limma_res$sig_genes_df' contains a 'logFC' column and 'Gene_Symbol'
+sig_df <- limma_res$sig_genes_df
+
+# Check if logFC exists (Safety check)
+if (!"logFC" %in% colnames(sig_df)) {
+  stop("Error: 'logFC' column not found in results. Cannot split by direction.")
+}
+
+# Extract UP-regulated genes (logFC > 0)
+genes_up <- unique(na.omit(sig_df$Gene_Symbol[sig_df$logFC > 0]))
+genes_up
+
+# Extract DOWN-regulated genes (logFC < 0)
+genes_down <- unique(na.omit(sig_df$Gene_Symbol[sig_df$logFC < 0]))
+
+message(paste0("Found ", length(genes_up), " Upregulated genes."))
+message(paste0("Found ", length(genes_down), " Downregulated genes."))
+
+
+# 3. Define Analysis Function
+run_directional_enrichment <- function(gene_list, direction_label) {
+  
+  if (length(gene_list) < 5) {
+    message(paste0("\n[Skipping] Not enough genes in ", direction_label, " list (<5)."))
+    return(NULL)
+  }
+  
+  message(paste0("\nRunning Enrichment for: ", direction_label, "..."))
+  enriched <- enrichr(gene_list, dbs)
+  
+  # --- Process Each Database ---
+  for (db_name in dbs) {
+    if (!is.null(enriched[[db_name]])) {
+      # 1. Sort by P-value
+      res <- enriched[[db_name]]
+      res <- res[order(res$P.value), ]
+      
+      # 2. Filter Significant (Standard P < 0.05)
+      res_sig <- res[res$P.value < p_threshold, ]
+      
+      # 3. Save to CSV (e.g., Pathways_KEGG_UP.csv)
+      # Clean DB name for filename (remove year if desired, keeping it simple here)
+      clean_db_name <- strsplit(db_name, "_")[[1]][1] # e.g., "KEGG"
+      fname <- file.path(output_dir, paste0("Pathways_", clean_db_name, "_", direction_label, ".csv"))
+      
+      write.csv(res_sig, fname)
+      
+      # 4. Print Top Results to Console
+      message(paste0("  [", clean_db_name, "] Top 3 Significant Pathways:"))
+      if (nrow(res_sig) > 0) {
+        print(head(res_sig[, c("Term", "P.value", "Overlap")], 3))
+      } else {
+        message("    No significant pathways found (P < 0.05).")
+      }
+    }
+  }
+}
+
+# 4. Execute Analysis
+run_directional_enrichment(genes_up, "UP_Activated")
+run_directional_enrichment(genes_down, "DOWN_Inhibited")
+
+message("\n[DONE] Directional Pathway Analysis Finished!")
 message(paste("Check output directory:", output_dir))
