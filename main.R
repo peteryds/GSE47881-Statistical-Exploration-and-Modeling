@@ -273,7 +273,10 @@ run_directional_enrichment <- function(gene_list, direction_label) {
       clean_db_name <- strsplit(db_name, "_")[[1]][1] # e.g., "KEGG"
       fname <- file.path(output_dir, paste0("Pathways_", clean_db_name, "_", direction_label, ".csv"))
       
-      write.csv(res_sig, fname)
+      # Only write CSV when there are significant pathways to avoid empty files
+      if (nrow(res_sig) > 0) {
+        write.csv(res_sig, fname)
+      }
       
       # 4. Print Top Results to Console
       message(paste0("  [", clean_db_name, "] Top 3 Significant Pathways:"))
