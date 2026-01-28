@@ -115,7 +115,6 @@ library(hgu133plus2.db)
 library(AnnotationDbi)
 
 # Define a helper function to perform ID mapping
-# Define a helper function to perform ID mapping
 annotate_results <- function(df) {
   # Safety Check: If dataframe is empty, return it immediately
   if (nrow(df) == 0) {
