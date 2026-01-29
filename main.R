@@ -143,8 +143,8 @@ annotate_results <- function(df) {
                       multiVals = "first")
   df$Gene_Name <- genenames
   
-  # Reorder columns
-  df <- df[, c("Gene_Symbol", setdiff(names(df), "Gene_Symbol"))]
+  # Reorder columns: place Gene_Symbol and Gene_Name first, followed by all other columns
+  df <- df[, c("Gene_Symbol", "Gene_Name", setdiff(names(df), c("Gene_Symbol", "Gene_Name")))]
   
   return(df)
 }
