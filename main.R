@@ -110,7 +110,7 @@ limma_int <- run_limma_interaction(eset_clean, p_cutoff = 0.05)
 # ============================================================
 # 6.5 Annotation (ID Mapping) - NEW SECTION
 # ============================================================
-message("\n=== STEP 3.5: Mapping Probe IDs to Gene Symbols ===")
+message("\n=== Section 6.5: Mapping Probe IDs to Gene Symbols ===")
 library(hgu133plus2.db)
 library(AnnotationDbi)
 
