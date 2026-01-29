@@ -217,9 +217,9 @@ for (probe in top_genes_probes) {
 
 
 # ============================================================
-# 8. Pathway Analysis (Split by Direction: UP vs DOWN)
+# 6. Pathway Analysis (Split by Direction: UP vs DOWN)
 # ============================================================
-message("\n=== STEP 5: Pathway Enrichment Analysis (Directional) ===")
+message("\n=== STEP 6: Pathway Enrichment Analysis (Directional) ===")
 library(enrichR)
 
 # 1. Setup Databases and Thresholds
