@@ -289,8 +289,8 @@ run_directional_enrichment <- function(gene_list, direction_label) {
 }
 
 # 4. Execute Analysis
-run_directional_enrichment(genes_up, "UP_Activated")
-run_directional_enrichment(genes_down, "DOWN_Inhibited")
+run_directional_enrichment(genes_up, "UP")
+run_directional_enrichment(genes_down, "DOWN")
 
 message("\n[DONE] Directional Pathway Analysis Finished!")
 message(paste("Check output directory:", output_dir))
