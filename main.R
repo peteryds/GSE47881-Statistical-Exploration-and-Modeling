@@ -237,7 +237,6 @@ if (!"logFC" %in% colnames(sig_df)) {
 
 # Extract UP-regulated genes (logFC > 0)
 genes_up <- unique(na.omit(sig_df$Gene_Symbol[sig_df$logFC > 0]))
-genes_up
 
 # Extract DOWN-regulated genes (logFC < 0)
 genes_down <- unique(na.omit(sig_df$Gene_Symbol[sig_df$logFC < 0]))
