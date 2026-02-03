@@ -232,64 +232,69 @@ sig_df <- limma_res$sig_genes_df
 
 # Check if logFC exists (Safety check)
 if (!"logFC" %in% colnames(sig_df)) {
-  stop("Error: 'logFC' column not found in results. Cannot split by direction.")
-}
+# Early check: handle case where no significant genes are available
+if (is.null(sig_df) || nrow(sig_df) == 0) {
+  message("\n[Skipping] No significant genes available for directional pathway analysis.")
+} else {
 
-# Extract UP-regulated genes (logFC > 0)
-genes_up <- unique(na.omit(sig_df$Gene_Symbol[sig_df$logFC > 0]))
-
-# Extract DOWN-regulated genes (logFC < 0)
-genes_down <- unique(na.omit(sig_df$Gene_Symbol[sig_df$logFC < 0]))
-
-message(paste0("Found ", length(genes_up), " Upregulated genes."))
-message(paste0("Found ", length(genes_down), " Downregulated genes."))
-
-
-# 3. Define Analysis Function
-run_directional_enrichment <- function(gene_list, direction_label) {
-  
-  if (length(gene_list) < 5) {
-    message(paste0("\n[Skipping] Not enough genes in ", direction_label, " list (<5)."))
-    return(NULL)
+  # Check if logFC exists (Safety check)
+  if (!"logFC" %in% colnames(sig_df)) {
+    stop("Error: 'logFC' column not found in results. Cannot split by direction.")
   }
-  
-  message(paste0("\nRunning Enrichment for: ", direction_label, "..."))
-  enriched <- enrichr(gene_list, dbs)
-  
-  # --- Process Each Database ---
-  for (db_name in dbs) {
-    if (!is.null(enriched[[db_name]])) {
-      # 1. Sort by P-value
-      res <- enriched[[db_name]]
-      res <- res[order(res$P.value), ]
-      
-      # 2. Filter Significant (Standard P < 0.05)
-      res_sig <- res[res$P.value < p_threshold, ]
-      
-      # 3. Save to CSV (e.g., Pathways_KEGG_UP.csv)
-      # Clean DB name for filename (remove year if desired, keeping it simple here)
-      clean_db_name <- strsplit(db_name, "_")[[1]][1] # e.g., "KEGG"
-      fname <- file.path(output_dir, paste0("Pathways_", clean_db_name, "_", direction_label, ".csv"))
-      
-      # Only write CSV when there are significant pathways to avoid empty files
-      if (nrow(res_sig) > 0) {
+
+  # Extract UP-regulated genes (logFC > 0)
+  genes_up <- unique(na.omit(sig_df$Gene_Symbol[sig_df$logFC > 0]))
+  genes_up
+
+  # Extract DOWN-regulated genes (logFC < 0)
+  genes_down <- unique(na.omit(sig_df$Gene_Symbol[sig_df$logFC < 0]))
+
+  message(paste0("Found ", length(genes_up), " Upregulated genes."))
+  message(paste0("Found ", length(genes_down), " Downregulated genes."))
+
+  # 3. Define Analysis Function
+  run_directional_enrichment <- function(gene_list, direction_label) {
+
+    if (length(gene_list) < 5) {
+      message(paste0("\n[Skipping] Not enough genes in ", direction_label, " list (<5)."))
+      return(NULL)
+    }
+
+    message(paste0("\nRunning Enrichment for: ", direction_label, "..."))
+    enriched <- enrichr(gene_list, dbs)
+
+    # --- Process Each Database ---
+    for (db_name in dbs) {
+      if (!is.null(enriched[[db_name]])) {
+        # 1. Sort by P-value
+        res <- enriched[[db_name]]
+        res <- res[order(res$P.value), ]
+
+        # 2. Filter Significant (Standard P < 0.05)
+        res_sig <- res[res$P.value < p_threshold, ]
+
+        # 3. Save to CSV (e.g., Pathways_KEGG_UP.csv)
+        # Clean DB name for filename (remove year if desired, keeping it simple here)
+        clean_db_name <- strsplit(db_name, "_")[[1]][1] # e.g., "KEGG"
+        fname <- file.path(output_dir, paste0("Pathways_", clean_db_name, "_", direction_label, ".csv"))
+
         write.csv(res_sig, fname)
-      }
-      
-      # 4. Print Top Results to Console
-      message(paste0("  [", clean_db_name, "] Top 3 Significant Pathways:"))
-      if (nrow(res_sig) > 0) {
-        print(head(res_sig[, c("Term", "P.value", "Overlap")], 3))
-      } else {
-        message("    No significant pathways found (P < 0.05).")
+
+        # 4. Print Top Results to Console
+        message(paste0("  [", clean_db_name, "] Top 3 Significant Pathways:"))
+        if (nrow(res_sig) > 0) {
+          print(head(res_sig[, c("Term", "P.value", "Overlap")], 3))
+        } else {
+          message("    No significant pathways found (P < 0.05).")
+        }
       }
     }
   }
+
+  # 4. Execute Analysis
+  run_directional_enrichment(genes_up, "UP_Activated")
+  run_directional_enrichment(genes_down, "DOWN_Inhibited")
+
+  message("\n[DONE] Directional Pathway Analysis Finished!")
+  message(paste("Check output directory:", output_dir))
 }
-
-# 4. Execute Analysis
-run_directional_enrichment(genes_up, "UP")
-run_directional_enrichment(genes_down, "DOWN")
-
-message("\n[DONE] Directional Pathway Analysis Finished!")
-message(paste("Check output directory:", output_dir))
