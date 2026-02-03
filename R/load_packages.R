@@ -7,7 +7,7 @@
 setup_environment <- function() {
   
   # 1. CRAN Packages
-  cran_packages <- c("dplyr", "ggplot2", "tidyr", "readr", "stringr")
+  cran_packages <- c("dplyr", "ggplot2", "tidyr", "readr", "stringr", "enrichR")
   
   for (pkg in cran_packages) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
@@ -21,7 +21,7 @@ setup_environment <- function() {
     install.packages("BiocManager")
   
   bioc_packages <- c("GEOquery", "limma", "pheatmap", "clusterProfiler", 
-                     "org.Hs.eg.db", "hgu133plus2.db")
+                     "org.Hs.eg.db", "hgu133plus2.db", "AnnotationDbi")
   
   for (pkg in bioc_packages) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
@@ -42,6 +42,8 @@ setup_environment <- function() {
     library(clusterProfiler)
     library(org.Hs.eg.db)
     library(hgu133plus2.db)
+    library(AnnotationDbi)
+    library(enrichR)
     library(Biobase)
   })
   

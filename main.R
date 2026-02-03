@@ -26,10 +26,6 @@ if (!dir.exists(dir_clean)) dir.create(dir_clean)
 dir_plots <- file.path(output_dir, "Plots_Interaction")
 if (!dir.exists(dir_plots)) dir.create(dir_plots)
 
-if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
-
-BiocManager::install(c("hgu133plus2.db", "AnnotationDbi", "enrichR"))
-
 # ============================================================
 # 3. Data Loading & Phase 1 QC (Raw Data)
 # ============================================================
@@ -111,8 +107,6 @@ limma_int <- run_limma_interaction(eset_clean, p_cutoff = 0.05)
 # 6.5 Annotation (ID Mapping) - NEW SECTION
 # ============================================================
 message("\n=== Section 6.5: Mapping Probe IDs to Gene Symbols ===")
-library(hgu133plus2.db)
-library(AnnotationDbi)
 
 # Define a helper function to perform ID mapping
 annotate_results <- function(df) {
@@ -220,7 +214,6 @@ for (probe in top_genes_probes) {
 # 6. Pathway Analysis (Split by Direction: UP vs DOWN)
 # ============================================================
 message("\n=== STEP 6: Pathway Enrichment Analysis (Directional) ===")
-library(enrichR)
 
 # 1. Setup Databases and Thresholds
 dbs <- c("KEGG_2021_Human", "GO_Biological_Process_2021")
