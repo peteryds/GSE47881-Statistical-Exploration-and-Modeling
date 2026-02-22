@@ -1,96 +1,47 @@
-# GSE47881-Statistical-Exploration-and-Modeling
+# Exploring Omic Responses to Exercise: An Initial Analysis
 
-## Introduction
+![Project Status](https://img.shields.io/badge/Status-Work_in_Progress-yellow)
 
-This project analyzes skeletal muscle gene expression data from GSE47881\
-(44 subjects, pre/post 20-week resistance training). We focus on:
+## Project Overview
+This ongoing study explores the biological mechanisms behind physiological changes in response to exercise. By employing a two-stage analytical framework that integrates both human and animal datasets, we aim to construct statistical frameworks to identify specific molecular features associated with individual exercise performance. Ultimately, this project tests the feasibility of predictive modeling in identifying potential systemic determinants of exercise responsiveness.
 
--   Exploratory data analysis (EDA) of pre/post gene expression
+## Analytical Framework
 
--   Paired vs. unpaired modeling to compare statistical conclusions
+### Phase 1: Human Cohort
+As a preliminary proof of concept, we established a baseline molecular signature using the human skeletal muscle dataset **GSE47881**. 
+* **Methods:** Empirical Bayes and False Discovery Rate (FDR).
+* **Key Findings:** Characterized a core signature of 206 significantly upregulated genes post-exercise. Pathway analysis indicated enrichment in PI3K-Akt signaling, Focal adhesion, and ECM-receptor interactions, alongside a suppression of ribosomal pathways.
 
--   Multiple hypothesis testing at genome-scale (\~55,000 probes)
+### Phase 2: Multi-Omics Integration (Animal Cohort - In Progress)
+To address the limitations of single-tissue human data and observe systemic interactions, the current phase integrates multi-tissue and multi-omics data from the **MoTrPAC** cohort.
+* **Study Population:** 152 rats subjected to an 8-week endurance training protocol.
+* **Target:** Stratifying the population into "High" and "Low" responders based on the percentage change in maximal oxygen uptake (VO2 max).
+* **Proposed Modeling:** Applying **LASSO Logistic Regression** to integrated high-dimensional profiles (transcriptomics, proteomics, metabolomics) across relevant tissues. This approach allows for simultaneous regularization and feature selection to identify candidate systemic molecular predictors.
 
--   Categorical variable creation and categorical continuous relationships
+## Key Limitations
+* The translational gap between human (GSE47881) and rodent (MoTrPAC) models.
+* Inherent physiological and molecular differences between resistance and endurance training modalities.
 
--   Regression-based evaluation of specific genes of interest
+## How to Run the Current Code
 
-We explicitly address key statistical issues such as matching structure,\
-fishing for significance, and multiplicity correction.
+This repository contains the analysis scripts for **Phase 1** now (Human GSE47881 Analysis). 
 
-All R functions use `roxygen2` style documentation for easy collaboration.
+### 1. Prerequisites
+Ensure you have **R (version >= 4.0)** installed, along with the following required libraries. You can install the Bioconductor and CRAN packages by running:
 
-## How to Run
+```R
+# Install CRAN packages
+install.packages(c("tidyverse", "glmnet", "caret", "ggplot2"))
 
-### 1. Clone the repository to your local machine.
+# Install Bioconductor packages
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install(c("GEOquery", "limma", "clusterProfiler", "org.Hs.eg.db"))
+```
 
-`git clone https://github.com/peteryds/GSE47881-Statistical-Exploration-and-Modeling.git`
-
-### 2. Open the project in RStudio.
-
-Open this directory in RStudio (e.g., by double-clicking a `.Rproj` file).
-
-### 3. Ensure you have the required packages installed (listed in `DESCRIPTION`).
-
-It will automatically install any missing packages when you run the code in the\
-first step of `main.R`.
-
-`setup_environment()`
-
-### 4. Run the full analysis in your R console via:
-
-`source("main.R")`
-
-## Project Structure
-
--   `R/`: R scripts containing functions for data processing, analysis, and visualization.
--   `main.R`: Main script to run the entire analysis pipeline.
--   `data/`: Raw and processed data files. (automatically created when running the code)
--   `output/`: Output files including figures and tables. (automatically created when running the code)
--   `README.md`: Project overview and instructions.
--   `DESCRIPTION`: Project metadata and package dependencies.
--   `GSE47881-Statistical-Exploration-and-Modeling.Rproj`: RStudio project file.
--   `gitignore`: Specifies files and directories to be ignored by Git.
--   `docs/`: Documentation and reports generated from the analysis.(coming soon)
-
-## Architecture Design
-
-### Data Source
-
-The gene expression dataset GSE47881 is sourced from the Gene Expression Omnibus (GEO) database.
-
-https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE47881
-
-### Data Loading Design
-
-The data loading workflow implements a smart caching mechanism. It prioritizes\
-checking the local data/raw directory for existing datasets. Downloads from NCBI GEO\
-are triggered only if local files are missing. This prevents redundant network requests\
-and significantly accelerates reproducible analysis.
-
-### Data Munging Design
-
-The munging pipeline transforms raw ExpressionSet data into a subject-centric analytical format.\
-It cleans phenotype metadata and merges it with transposed expression data.\
-The workflow pivots the dataset from long to wide to align timepoints, then calculates\
-gene expression changes ($\Delta = \text{Post} - \text{Pre}$) via vectorized matrix operations.\
-This produces a clean dataset ready for differential analysis.
-
-### Statistical Analysis Design
-
-We leverage prior insights from our [exploratory study](https://github.com/peteryds/exercise-gene-analysis),\
-where a comprehensive limma analysis identified 8 genes with statistically significant differential\
-expression (pre- vs. post-training). Consider computational efficiency, we restrict current regression models\
-to these high-confidence candidates rather than processing the full genome.
-
--   Currently analyzes 8 specific muscle-related genes.
-
--   Model 1: $Diff = \beta_0$ (Does training change expression?)
-
--   Model 2: $Diff = \beta_0 + \beta_1(Age)$ (Does age affect adaptation?)
-
-## Dependencies
-
--   R (version 4.0 or higher recommended)
--   R packages: `GEOquery`, `limma`, `ggplot2`, `dplyr`, `tidyr`, `pheatmap`, `stats`, `roxygen2`, and others as specified in `DESCRIPTION`.
-
+### 2. Project Structure & Execution
+```
+git clone [https://github.com/peteryds/Exercise-Omics-Exploration.git](https://github.com/peteryds/Exercise-Omics-Exploration.git)
+cd Exercise-Omics-Exploration
+Rscript main.R
+```
