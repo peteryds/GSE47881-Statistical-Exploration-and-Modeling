@@ -40,6 +40,20 @@ BiocManager::install(c("GEOquery", "limma", "clusterProfiler", "org.Hs.eg.db"))
 ```
 
 ### 2. Project Structure & Execution
+
+The project is divided into three main directories to manage the progression of the study:
+
+```text
+Exercise-Omics-Exploration/
+├── GSE47881/              # Phase 1: Human Cohort Analysis (Course Assignment)
+│   ├── data/              # Raw and processed datasets
+│   ├── R/                 # Underlying custom R functions
+│   ├── src/               # Step-by-step analytical modules
+│   ├── results/           # Output figures and CSVs
+│   └── main.R             # Master execution script for GSE47881
+├── MoTrPAC/               # Phase 2: Multi-Omics Integration (SMHCS Symposium)
+├── SMHCS_Poster/          # Phase 3: Poster Presentation Materials
+└── README.md              # Global project documentation
 ```
 git clone [https://github.com/peteryds/Exercise-Omics-Exploration.git](https://github.com/peteryds/Exercise-Omics-Exploration.git)
 cd Exercise-Omics-Exploration
